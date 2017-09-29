@@ -1,0 +1,3 @@
+[submodule "srcnn-tensorflow"]
+	path = srcnn-tensorflow
+	url = git@github.com:tjvandal/srcnn-tensorflow.git
