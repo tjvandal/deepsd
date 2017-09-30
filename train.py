@@ -8,10 +8,12 @@ import re
 import numpy as np
 import tensorflow as tf
 import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import pandas as pd
 
-sys.path.append('/home/vandal.t/repos/srcnn-tensorflow')
+base_srcnn = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'srcnn-tensorflow')
+sys.path.append(base_srcnn)
 from srcnn import srcnn
 from tfreader import inputs_climate
 
@@ -19,10 +21,10 @@ flags = tf.flags
 
 # model hyperparamters
 flags.DEFINE_string('hidden', '64,32,1', 'Number of units in hidden layer 1.')
-flags.DEFINE_string('kernels', '9,3,5', 'Kernel size of layer 1.')
+flags.DEFINE_string('kernels', '9,1,5', 'Kernel size of layer 1.')
 
 # Model training parameters
-flags.DEFINE_float('learning_rate', 0.0001, 'Initial learning rate.')
+flags.DEFINE_float('learning_rate', 0.01, 'Initial learning rate.')
 flags.DEFINE_integer('num_epochs', 50000, 'Number of epochs to run trainer.')
 flags.DEFINE_integer('batch_size', 100, 'Batch size.')
 flags.DEFINE_integer('test_batch', 10, 'Batch size.')
@@ -39,10 +41,10 @@ flags.DEFINE_integer('mc_steps', 1, 'Number of MC steps during test time.')
 
 # when to save, plot, and test
 flags.DEFINE_integer('save_step', 1000, 'How often should I save the model')
-flags.DEFINE_integer('test_step', 500, 'How often test steps are executed and printed')
+flags.DEFINE_integer('test_step', 50, 'How often test steps are executed and printed')
 
 # where to save things
-flags.DEFINE_string('data_dir', 'scratch/ppt_004_008/', 'Data Location')
+flags.DEFINE_string('data_dir', 'scratch/ppt_008_016/', 'Data Location')
 flags.DEFINE_string('save_dir', 'scratch/', 'Where to save checkpoints + logs.')
 flags.DEFINE_string('transfer_learning', 'scratch/srcnn_ppt_004_008_64-32-1_9-3-5/',
                     'Load a previous checkpoint for transfer learning, starting in a good place.')
@@ -99,12 +101,12 @@ def train():
         hr_size = FLAGS.input_size
         lr_size = hr_size / 2
         train_images, train_labels = inputs_climate(FLAGS.batch_size, FLAGS.num_epochs,
-                        DATA_DIR, input_shape=[lr_size, lr_size, FLAGS.input_depth],
-                        elev_shape=[hr_size, hr_size, 1], is_training=True,
-                        label_shape=[hr_size, hr_size, FLAGS.output_depth])
+                        DATA_DIR, lr_shape=[lr_size, lr_size], lr_d=(FLAGS.input_depth-1),
+                        aux_d=1, is_training=True,
+                        hr_shape=[hr_size, hr_size], hr_d=FLAGS.output_depth)
         test_images, test_labels, test_times = inputs_climate(FLAGS.test_batch, FLAGS.num_epochs,
-                        DATA_DIR, is_training=False)
-
+                        DATA_DIR, is_training=False, lr_d=(FLAGS.input_depth-1), aux_d=1,
+                        hr_d=FLAGS.output_depth)
 
         # crop training labels
         border_size = (sum(KERNELS) - len(KERNELS))/2
@@ -122,7 +124,7 @@ def train():
         # Use SRCNN
         model = srcnn.SRCNN(x, y, HIDDEN_LAYERS, KERNELS, input_depth=FLAGS.input_depth,
                             learning_rate=FLAGS.learning_rate, upscale_factor=2,
-                           is_training=is_training)
+                           is_training=is_training, gpu=True)
         prediction = tf.identity(model.prediction, name='prediction')
 
         # initialize graph and start session
@@ -156,17 +158,18 @@ def train():
 
         #curr_step = int(sess.run(model.global_step))
         curr_step = 0
-        sess.run(test_images)
         for step in range(curr_step, FLAGS.num_epochs+1):
             start_time = time.time()
-            _, train_loss, train_rmse = sess.run([model.opt, model.loss, model.rmse], feed_dict=feed_dict())
+            _, train_loss, train_rmse = sess.run([model.opt, model.loss, model.rmse],
+                                                 feed_dict=feed_dict(True))
             duration = time.time() - start_time
             if step  % FLAGS.test_step == 0:
                 test_summary = sess.run(summary_op, feed_dict=feed_dict(True))
                 train_writer.add_summary(test_summary, step)
 
-                d = feed_dict(train=False)
-                out = sess.run([model.loss, model.rmse, summary_op], feed_dict=d)
+                d = feed_dict(train=True)
+                out = sess.run([model.loss, model.rmse, summary_op, model.x_norm], feed_dict=d)
+                print np.mean(out[3])
                 test_writer.add_summary(out[2], step)
                 print "Step: %d, Examples/sec: %0.5f, Training Loss: %2.3f," \
                         " Train RMSE: %2.3f, Test RMSE: %2.4f" % \

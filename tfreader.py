@@ -9,68 +9,66 @@ from tensorflow.contrib.framework.python.ops import variables
 from tensorflow.python.ops import variable_scope
 from tensorflow.python.training import moving_averages
 
-def read_and_decode(filename_queue, is_training, input_shape=None,
-                   elev_shape=None, label_shape=None):
+def read_and_decode(filename_queue, is_training,lr_d,aux_d,hr_d,
+                    lr_shape=None, hr_shape=None):
     reader = tf.TFRecordReader()
     _, serialized_example = reader.read(filename_queue)
     features = tf.parse_single_example(
         serialized_example,
-        features={'label': tf.FixedLenFeature([], tf.string),
-                  'img_in': tf.FixedLenFeature([], tf.string),
-                  'elev': tf.FixedLenFeature([], tf.string),
-                  'input_depth': tf.FixedLenFeature([], tf.int64),
-                  'label_depth': tf.FixedLenFeature([], tf.int64),
-                  'rows': tf.FixedLenFeature([], tf.int64),
-                  'cols': tf.FixedLenFeature([], tf.int64),
-                  #'feature_vars': tf.FixedLenFeature([], tf.string),
-                  #'label_vars': tf.FixedLenFeature([], tf.string),
-                  'time': tf.FixedLenFeature([], tf.int64),
-                  'lat': tf.FixedLenFeature([], tf.string),
-                  'lon': tf.FixedLenFeature([], tf.string)
-                })
+        features={
+            'hr_h': tf.FixedLenFeature([], tf.int64),
+            'hr_w': tf.FixedLenFeature([], tf.int64),
+            'lr_h': tf.FixedLenFeature([], tf.int64),
+            'lr_w': tf.FixedLenFeature([], tf.int64),
+            'label': tf.FixedLenFeature([], tf.string),
+            'img_in': tf.FixedLenFeature([], tf.string),
+            'aux': tf.FixedLenFeature([], tf.string),
+            'lat': tf.FixedLenFeature([], tf.string),
+            'lon': tf.FixedLenFeature([], tf.string),
+            'time': tf.FixedLenFeature([], tf.int64)
+        })
 
     with tf.device("/cpu:0"):
-        if not is_training:
-            label_width = tf.cast(tf.reshape(features['cols'], []), tf.int32)
-            label_height = tf.cast(tf.reshape(features['rows'], []), tf.int32)
-            input_depth = tf.cast(tf.reshape(features['input_depth'], []), tf.int32)
-            output_depth = tf.cast(tf.reshape(features['output_depth'], []), tf.int32)
-            input_shape = tf.stack([height, width, input_depth])
-            elev_shape = tf.stack([height, width, 1])
-            label_shape = tf.stack([height, width, output_depth])
-
         if is_training:
-            input_shape = tf.constant(input_shape)
-            elev_shape = tf.constant(elev_shape)
-            label_shape = tf.constant(label_shape)
+            hr_h, hr_w = hr_shape
+            lr_h, lr_w = lr_shape
+        else:
+            hr_w = tf.cast(tf.reshape(features['hr_w'], []), tf.int32)
+            hr_h = tf.cast(tf.reshape(features['hr_h'], []), tf.int32)
+
+            lr_w = tf.cast(tf.reshape(features['lr_w'], []), tf.int32)
+            lr_h = tf.cast(tf.reshape(features['lr_h'], []), tf.int32)
+
+            #input_shape = tf.stack([lr_h, lr_w, lr_d])
+            #aux_shape = tf.stack([hr_h, hr_w, aux_d])
+            #label_shape = tf.stack([hr_h, hr_w, hr_d])
 
         img_in = tf.decode_raw(features['img_in'], tf.float32)
-        img_in = tf.reshape(img_in, [1] + input_shape)
+        img_in = tf.reshape(img_in, [1, lr_h, lr_w, lr_d])
         img_in = tf.cast(img_in, tf.float32)
-        img_in = tf.image.resize_images(img_in, [label_shape.tolist()[0], label_shape[1]])
-        print img_in
+        img_in = tf.image.resize_images(img_in, [hr_h, hr_w])
+        img_in = tf.reshape(img_in, [hr_h, hr_w, lr_d])
 
         label = tf.decode_raw(features['label'], tf.float32)
-        label = tf.reshape(label, label_shape)
+        label = tf.reshape(label, [hr_h, hr_w, hr_d])
         label = tf.cast(label, tf.float32)
 
-        elev = tf.decode_raw(features['elev'], tf.float32)
-        elev = tf.reshape(elev, elev_shape)
-        elev = tf.cast(elev, tf.float32)
-
-        img_in = tf.concat([img_in, elev], axis=2)
+        aux = tf.decode_raw(features['aux'], tf.float32)
+        aux = tf.reshape(aux, [hr_h, hr_w, aux_d])
+        aux = tf.cast(aux, tf.float32)
+        img_in = tf.concat([img_in, aux], axis=2)
 
         lat = tf.decode_raw(features['lat'], tf.float32)
-        lat = tf.reshape(lat, [label_shape[0]])
+        lat = tf.reshape(lat, [hr_h])
 
         lon = tf.decode_raw(features['lon'], tf.float32)
-        lon = tf.reshape(lon, [label_shape[1]])
+        lon = tf.reshape(lon, [hr_w])
 
         return {"input": img_in, "label": label,
                 "lat":lat, "lon":lon, "time": features['time']}
 
-def inputs_climate(batch_size, num_epochs, data_dir, input_shape=None,
-                   elev_shape=None, label_shape=None, is_training=False):
+def inputs_climate(batch_size, num_epochs, data_dir, lr_d, aux_d, hr_d, lr_shape=None,
+                   hr_shape=None, is_training=False):
     filenames= sorted([os.path.join(data_dir, f) for f in os.listdir(data_dir)
                   if 'tfrecords' in f])
     if is_training:
@@ -80,8 +78,8 @@ def inputs_climate(batch_size, num_epochs, data_dir, input_shape=None,
 
     with tf.name_scope('input'), tf.device("/cpu:0"):
         filename_queue =tf.train.string_input_producer(filenames)
-        data = read_and_decode(filename_queue, is_training, input_shape,
-                              elev_shape, label_shape)
+        data = read_and_decode(filename_queue, is_training, lr_d, aux_d, hr_d,
+                              lr_shape=lr_shape, hr_shape=hr_shape)
         # what will happen to nan values? 
         if is_training:
             images, labels = tf.train.shuffle_batch([data['input'], data['label']], batch_size=batch_size,

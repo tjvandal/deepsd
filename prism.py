@@ -209,12 +209,12 @@ class PrismSuperRes(PrismBase):
         elev = utils.interp_da2d(elev, scale1)
         mask = mask.sel(lat=Y_interp.lat, lon=Y_interp.lon, method='nearest')
 
-        if self.model == 'resnet':
-            X = utils.interp_da(Y_interp, scale2)
-        elif self.model == 'srcnn':
-            X = utils.interp_da(utils.interp_da(Y_interp, scale2), 1./scale2)
-        else:
-            raise ValueError('The model parameter should be set to either srcnn or resnet.')
+        #if self.model == 'resnet':
+        X = utils.interp_da(Y_interp, scale2)
+        #elif self.model == 'srcnn':
+        #    X = utils.interp_da(utils.interp_da(Y_interp, scale2), 1./scale2)
+        #else:
+        #    raise ValueError('The model parameter should be set to either srcnn or resnet.')
         return mask, X, Y_interp, elev
 
     def make_patches(self, save_file=None, size=50, stride=30, scale1=1., scale2=0.5):
@@ -254,9 +254,6 @@ class PrismSuperRes(PrismBase):
 
                     y_sub = Y[j, np.newaxis, y:y+size, x:x+size, np.newaxis]
                     elev_sub = elev[np.newaxis,y:y+size,x:x+size,:]
-                    print 'x', x_sub.shape
-                    print 'x', y_sub.shape
-                    sys.exit()
 
                     inputs += [x_sub]
                     labels += [y_sub]
