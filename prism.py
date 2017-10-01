@@ -23,7 +23,7 @@ def recursive_mkdir(path):
     split_dir = path.split("/")
     for k in range(len(split_dir)):
         d = "/".join(split_dir[:(k+1)])
-        if not os.path.exists(d):
+        if (d != '') and (not os.path.exists(d)):
             os.mkdir(d)
 
 class PrismBil:
@@ -298,10 +298,11 @@ def main_prism_tf(config, model='srcnn'):
     var = config.get('DataOptions', 'variable')
     minyear = int(config.get('DataOptions', 'min_year'))
     maxyear = int(config.get('DataOptions', 'max_year'))
+    patch_size = int(config.get('SRCNN', 'training_input_size'))
     hr_resolution_km = 4
     scale2 = 1./2  # scale2 is relative to scale1
     #for scale1 in [1./16, 1., 1./2, 1./4, 1./8]:
-    for scale1 in [1./2, 1.]:
+    for scale1 in [1./8, 1./4, 1./2, 1.]:
         save_dir = os.path.join(config.get('Paths', 'scratch'),
                         '%s_%03i_%03i' % (var, hr_resolution_km/scale1,
                                           hr_resolution_km/(scale1*scale2)))
@@ -317,7 +318,7 @@ def main_prism_tf(config, model='srcnn'):
                 print tf_file
                 if 1: # not os.path.exists(tf_file):
                     print "trying to make patches"
-                    d.make_patches(tf_file, size=38, stride=20, scale1=scale1, scale2=scale2)
+                    d.make_patches(tf_file, size=patch_size, stride=20, scale1=scale1, scale2=scale2)
             else:
                 print "Building test set for year:", y
                 tf_file = os.path.join(save_dir, 'test_%i.tfrecords' % y)
