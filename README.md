@@ -17,6 +17,13 @@ The user must install these independently of this package.  I will try to add mo
 
 ## Usage
 
+### Quick Look
+
+To run the example code execute the following on the terminal: <br>
+`python prism.py` <br>
+`bash run_job.sh` <br>
+`python inference.py` <br>
+
 ### Configuration File
 
 `config.ini` provides and example configuration file allowing one to selection prism data options, file directories, architecture selection, and how many models to stack. All of the following scripts which download and process the data, train the models, and do inference, rely directly on this configuration file.  One can make their own config file and include it as an argument to the scripts.
