@@ -91,6 +91,7 @@ def downloadPrismFtpData(parm, output_dir=os.getcwd(), timestep='monthly', years
     'years' is a list of the years for which data is desired.
     """
     from ftplib import FTP
+    import socket
 
     recursive_mkdir(output_dir)
     data = []
@@ -104,8 +105,12 @@ def downloadPrismFtpData(parm, output_dir=os.getcwd(), timestep='monthly', years
     assert years is not None, 'Please enter a year for which data will be fetched.'
     if isinstance(years, int):
         years = list(years)
-    ftp = FTP(server)
-    ftp.login()
+    try:
+        ftp = FTP(server, timeout=5)
+        ftp.login()
+    except socket.timeout:
+        print("Cannot connect to FTP server, socket.timeout")
+        return
     # Wrap everything in a try clause so we close the FTP connection gracefully
     try:
         for year in years:
@@ -114,7 +119,6 @@ def downloadPrismFtpData(parm, output_dir=os.getcwd(), timestep='monthly', years
                 continue
             data = []
             xray_data = []
-            dir = 'monthly'
             if timestep == 'daily':
                 dir = timestep
             dir_string = '{}/{}/{}'.format(dir, parm, year)
@@ -348,11 +352,11 @@ if __name__ == "__main__":
     max_year = int(config.get('DataOptions', 'max_year'))
 
     if not os.path.exists(data_dir):
-        os.mkdir(data_dir)
+        recursive_mkdir(data_dir)
 
-    #for var in ['ppt',]:
-    #    downloadPrismFtpData(var, os.path.join(data_dir, var, 'raw'), 'daily',
-    #                         range(min_year, max_year+1))
+    for var in ['ppt',]:
+        downloadPrismFtpData(var, os.path.join(data_dir, var, 'raw'), 'daily',
+                             range(min_year, max_year+1))
 
     main_prism_tf(config)
 
