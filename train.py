@@ -18,7 +18,7 @@ flags = tf.flags
 flags.DEFINE_string('config_file', 'config.ini', 'Configuration file with [SRCNN] section.')
 flags.DEFINE_string('checkpoint_file', None, 'Any checkpoint with the same architecture as'\
                     'configured.')
-flags.DEFINE_string('experiment_number', '1', 'Experiment-? in config file/')
+flags.DEFINE_string('model_number', '1', 'Experiment-? in config file/')
 
 # parse flags
 FLAGS = flags.FLAGS
@@ -44,8 +44,8 @@ TEST_STEP = int(config.get('SRCNN', 'test_step'))
 KEEP_PROB = 1. - float(config.get('SRCNN', 'dropout_prob'))
 
 # where to save and get data
-DATA_DIR = config.get('Model-%s' % FLAGS.experiment_number, 'data_dir')
-MODEL_NAME = config.get('Model-%s' % FLAGS.experiment_number, 'model_name')
+DATA_DIR = config.get('Model-%s' % FLAGS.model_number, 'data_dir')
+MODEL_NAME = config.get('Model-%s' % FLAGS.model_number, 'model_name')
 timestamp = str(int(time.time()))
 curr_time = dt.datetime.now()
 

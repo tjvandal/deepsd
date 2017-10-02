@@ -1,2 +1,2 @@
-python train.py --experiment_number=1
-python train.py --experiment_number=2
+python train.py --model_number=1
+python train.py --model_number=2
