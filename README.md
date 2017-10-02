@@ -10,6 +10,11 @@ When cloning the repository, make sure to use the `--recursive` argument as Deep
 ### DeepSD is a Stack of SRCNNs w/ AUX var
 ![Alt text](deepsdflow.png?raw=true)
 
+## Dependencies
+
+The current codebase has only been tested with Python2, not Python3. Major dependencies include Tensorflow and Gdal libraries.
+The user must install these independently of this package.  I will try to add more support regarding dependencies at a later time.
+
 ## Usage
 
 ### Configuration File
