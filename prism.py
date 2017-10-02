@@ -14,10 +14,9 @@ import xarray as xr
 import ConfigParser
 import utils
 
-try:
-    from tfwriter import convert_to_tf
-except ImportError:
-    print("Tensorflow not available")
+import tensorflow as tf
+from tfwriter import convert_to_tf
+
 
 def recursive_mkdir(path):
     split_dir = path.split("/")
@@ -299,10 +298,17 @@ def main_prism_tf(config, model='srcnn'):
     minyear = int(config.get('DataOptions', 'min_year'))
     maxyear = int(config.get('DataOptions', 'max_year'))
     patch_size = int(config.get('SRCNN', 'training_input_size'))
-    hr_resolution_km = 4
-    scale2 = 1./2  # scale2 is relative to scale1
-    #for scale1 in [1./16, 1., 1./2, 1./4, 1./8]:
-    for scale1 in [1./8, 1./4, 1./2, 1.]:
+
+    highest_resolution = 4
+    hr_resolution_km = config.getint('DeepSD', 'high_resolution')
+    lr_resolution_km = config.getint('DeepSD', 'low_resolution')
+    upscale_factor = config.getint('DeepSD', 'upscale_factor')
+
+    start = hr_resolution_km / highest_resolution
+    N = int((lr_resolution_km / hr_resolution_km)**(1./upscale_factor))
+
+    scale2 = 1./upscale_factor  # scale2 is relative to scale1
+    for scale1 in [start * scale2**i for i in range(N)]:
         save_dir = os.path.join(config.get('Paths', 'scratch'),
                         '%s_%03i_%03i' % (var, hr_resolution_km/scale1,
                                           hr_resolution_km/(scale1*scale2)))
@@ -316,21 +322,27 @@ def main_prism_tf(config, model='srcnn'):
                 print "Making patches or year:", y
                 tf_file = os.path.join(save_dir, 'train_%i.tfrecords' % y)
                 print tf_file
-                if 1: # not os.path.exists(tf_file):
+                if  not os.path.exists(tf_file):
                     print "trying to make patches"
                     d.make_patches(tf_file, size=patch_size, stride=20, scale1=scale1, scale2=scale2)
             else:
                 print "Building test set for year:", y
                 tf_file = os.path.join(save_dir, 'test_%i.tfrecords' % y)
                 print tf_file
-                if 1: #not os.path.exists(tf_file):
+                if not os.path.exists(tf_file):
                     d.make_tf_test(tf_file, scale1, scale2)
 
 
 if __name__ == "__main__":
-    config_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.ini')
+    flags = tf.flags
+    flags.DEFINE_string('config_file', 'config.ini', 'Configuration file with [SRCNN] section.')
+
+    # parse flags
+    FLAGS = flags.FLAGS
+    FLAGS._parse_flags()
+
     config = ConfigParser.ConfigParser()
-    config.read(config_file)
+    config.read(FLAGS.config_file)
     data_dir = config.get('Paths', 'prism')
     min_year = int(config.get('DataOptions', 'min_year'))
     max_year = int(config.get('DataOptions', 'max_year'))

@@ -44,12 +44,12 @@ TEST_STEP = int(config.get('SRCNN', 'test_step'))
 KEEP_PROB = 1. - float(config.get('SRCNN', 'dropout_prob'))
 
 # where to save and get data
-DATA_DIR = config.get('Experiment-%s' % FLAGS.experiment_number, 'data_dir')
-data_name = os.path.basename(DATA_DIR.strip("/"))
+DATA_DIR = config.get('Model-%s' % FLAGS.experiment_number, 'data_dir')
+MODEL_NAME = config.get('Model-%s' % FLAGS.experiment_number, 'model_name')
 timestamp = str(int(time.time()))
 curr_time = dt.datetime.now()
 
-SAVE_DIR = os.path.join(config.get('SRCNN', 'scratch'), "srcnn_%s_%s_%s" % ( data_name,
+SAVE_DIR = os.path.join(config.get('SRCNN', 'scratch'), "srcnn_%s_%s_%s" % ( MODEL_NAME,
                     '-'.join([str(s) for s in LAYER_SIZES]),
                     '-'.join([str(s) for s in KERNEL_SIZES])))
 

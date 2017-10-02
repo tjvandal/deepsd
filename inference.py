@@ -15,11 +15,32 @@ sys.path.append(os.path.join(basedir, 'datasets'))
 import prism
 import utils
 
-# model parameters
 flags = tf.flags
+flags.DEFINE_string('config_file', 'config.ini',
+                    'Configuration file with [SRCNN], [Model-%], and [DeepSD] sections.')
 
+# parse flags
 FLAGS = flags.FLAGS
 FLAGS._parse_flags()
+
+config = ConfigParser.ConfigParser()
+config.read(FLAGS.config_file)
+
+PRISM_DIR = os.path.join(config.get('Paths', 'prism'), 'ppt', 'raw')
+
+model_sections = [(s,int(s.split('-')[1])) for s in config.sections() if 'Model' in s]
+model_sections.sort(key=lambda tup: tup[1])
+
+
+LAYER_SIZES = [int(k) for k in config.get('SRCNN', 'layer_sizes').split(",")]
+KERNEL_SIZES = [int(k) for k in config.get('SRCNN', 'kernel_sizes').split(",")]
+UPSCALE_FACTOR = config.getint('DeepSD', 'upscale_factor')
+
+CHECKPOINT_DIR = os.path.join(config.get('SRCNN', 'scratch'), "srcnn_%s_%s_%s" % ( '%s',
+                    '-'.join([str(s) for s in LAYER_SIZES]),
+                    '-'.join([str(s) for s in KERNEL_SIZES])))
+CHECKPOINTS = [CHECKPOINT_DIR % config.get(m[0], 'model_name') for m in model_sections ]
+DEEPSD_MODEL_NAME = config.get('DeepSD', 'model_name')
 
 def get_graph_def():
     with tf.Session() as sess:
@@ -50,7 +71,7 @@ def freeze_graph(model_folder, graph_name=None):
             raise ValueError("Give me a graph_name")
 
         # We clear devices to allow TensorFlow to control on which device it will load operations
-        clear_devices = True 
+        clear_devices = True
 
         # We import the meta graph and retrieve a Saver
         saver = tf.train.import_meta_graph(input_checkpoint + '.meta',
@@ -142,7 +163,7 @@ def join_graphs(checkpoints, new_checkpoint):
         # resize low-resolution
         h = tf.shape(x)[1]
         w = tf.shape(x)[2]
-        size = tf.stack([h*2, w*2])
+        size = tf.stack([h*UPSCALE_FACTOR, w*UPSCALE_FACTOR])
         x = tf.image.resize_bilinear(x, size)
 
         # join elevation and interpolated image
@@ -150,13 +171,8 @@ def join_graphs(checkpoints, new_checkpoint):
         graph_name = "_".join(os.path.basename(cpt.strip("/")).split("_")[1:4])
 
         # load frozen graph with x as the input
-        print 'x', x
         next_input = graph_name + '/x'
         x = load_graph(os.path.join(cpt, 'frozen_model.pb'), graph_name, x=x)
-
-        for var in tf.global_variables():
-            print 'chkp', j, var.op.name
-            time.sleep(0.1)
 
     with tf.Session() as sess:
         summary_op = tf.summary.merge_all()
@@ -170,37 +186,26 @@ def join_graphs(checkpoints, new_checkpoint):
         print("%d ops in the final graph." % len(gd.node))
 
     tf.reset_default_graph()
-    return output_graph
+    return output_graph, x.name
 
-def main(frozen_graph, scale1=1., scale2=1./2, n_stacked=1, upscale_factor=2):
-    # read configuration file
-    config_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.ini')
-    config = ConfigParser.ConfigParser()
-    config.read(config_file)
-
-    year = 2015
+def main(frozen_graph, output_node, year, scale1=1., n_stacked=1):
     # read prism dataset
     ## resnet parameter will not re-interpolate X
-    dataset = prism.PrismSuperRes(os.path.join(config.get('Paths', 'prism'), 'ppt','raw'), year,
-                      config.get('Paths', 'elevation'), model='srcnn')
+    dataset = prism.PrismSuperRes(PRISM_DIR, year, config.get('Paths', 'elevation'), model='srcnn')
 
-    X, elev, Y, lats, lons, times = dataset.make_test(scale1=scale1, scale2=scale2)
-    print X.shape, elev.shape, Y.shape
+    X, elev, Y, lats, lons, times = dataset.make_test(scale1=scale1, scale2=1./UPSCALE_FACTOR**2)
     mask = (Y[0,:,:,0]+1)/(Y[0,:,:,0] + 1)
     elev_hr = elev[0,:,:,0] # all the elevations are the same, remove some data from memory
 
     #  resize x
     n, h, w, c = X.shape
-    print 'Y Shape', Y.shape
-    print 'X shape', X.shape
 
     # get elevations at all 5 resolutions
     elev_dict = {}
     elevs = []
     for i in range(n_stacked):
-        r = upscale_factor**i
+        r = UPSCALE_FACTOR**i
         elev_dict[1./r] = cv2.resize(elev_hr, (0,0), fx=1./r, fy=1./r)
-        print 'elev shape', elev_dict[1./r].shape
         elevs.append(tf.constant(elev_dict[1./r][np.newaxis, :, :, np.newaxis].astype(np.float32)))
     elevs = elevs[::-1]
 
@@ -218,7 +223,7 @@ def main(frozen_graph, scale1=1., scale2=1./2, n_stacked=1, upscale_factor=2):
         y, = tf.import_graph_def(
             graph_def,
             input_map=input_map,
-            return_elements=['ppt_008_016/prediction:0'],
+            return_elements=[output_node],
             name='deepsd',
             op_dict=None,
             producer_op_list=None
@@ -241,6 +246,7 @@ def main(frozen_graph, scale1=1., scale2=1./2, n_stacked=1, upscale_factor=2):
     xr.Dataset({'precip': precip}).to_netcdf("precip_%i_downscaled.nc" % year)
 
     fig, axs = plt.subplots(3,1)
+    ymax = np.nanmax(Y)
     axs = np.ravel(axs)
     axs[0].imshow(Y[0,:,:,0], vmax=ymax)
     axs[0].axis('off')
@@ -255,14 +261,24 @@ def main(frozen_graph, scale1=1., scale2=1./2, n_stacked=1, upscale_factor=2):
     plt.close()
 
 if __name__ == '__main__':
-    checkpoints = [
-        'scratch/srcnn_ppt_008_016_64-32-1_9-1-5/',
-    ]
-    checkpoints = sorted(checkpoints)[::-1]
-    joined_checkpoint = os.path.join(os.path.dirname(checkpoints[0][:-1]), 'joined_008_016')
+    highest_resolution = 4
+    hr_resolution_km = config.getint('DeepSD', 'high_resolution')
+    lr_resolution_km = config.getint('DeepSD', 'low_resolution')
+    start = hr_resolution_km / highest_resolution
+    N = int((lr_resolution_km / hr_resolution_km)**(1./UPSCALE_FACTOR))
+
+    CHECKPOINTS = sorted(CHECKPOINTS)[::-1]
+    if len(CHECKPOINTS) != int(N):
+       raise ValueError
+
+    joined_checkpoint = os.path.join(os.path.dirname(CHECKPOINTS[0][:-1]), DEEPSD_MODEL_NAME)
+
     if not os.path.exists(joined_checkpoint):
         os.mkdir(joined_checkpoint)
 
-    #new_graph = join_graphs(checkpoints, joined_checkpoint)
+    new_graph, output_node = join_graphs(CHECKPOINTS, joined_checkpoint)
     new_graph = os.path.join(joined_checkpoint, 'frozen_graph.pb')
-    main(new_graph, scale1=1./2, scale2=1./2)
+    year1 = config.getint('DataOptions', 'max_train_year')+1
+    yearlast = config.getint('DataOptions', 'max_year')
+    for y in range(year1, yearlast+1):
+        main(new_graph, output_node, y, scale1=start, n_stacked=N)
