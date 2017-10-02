@@ -4,6 +4,12 @@ The code in this repository contains the Stacked Super-resolution CNN proposed i
 
 When cloning the repository, make sure to use the `--recursive` argument as DeepSD directly relys on our [SRCNN library](https://github.com/tjvandal/srcnn-tensorflow). Ie. `git clone --recursive https://github.com/tjvandal/deepsd.git`. 
 
+### SRCNN with AUX Var Network Architecture
+![Alt text](deepsd-network.png?raw=true)
+
+### DeepSD is a Stack of SRCNNs w/ AUX var
+![Alt text](deepsdflow.png?raw=true)
+
 ## Usage
 
 ### Configuration File
