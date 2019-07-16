@@ -309,8 +309,7 @@ def main_prism_tf(config, model='srcnn'):
     upscale_factor = config.getint('DeepSD', 'upscale_factor')
 
     start = hr_resolution_km / highest_resolution
-    N = int((lr_resolution_km / hr_resolution_km)**(1./upscale_factor))
-
+    N = int(math.log(lr_resolution_km / hr_resolution_km, upscale_factor))
     scale2 = 1./upscale_factor  # scale2 is relative to scale1
     for scale1 in [start * scale2**i for i in range(N)]:
         save_dir = os.path.join(config.get('Paths', 'scratch'),
