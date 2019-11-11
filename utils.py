@@ -17,9 +17,7 @@ def fillmiss(x):
 
 def interp_dim(x, scale):
     x0, xlast = x[0], x[-1]
-    step = (x[1]-x[0])/scale
-    y = np.arange(x0, xlast+step*scale, step)
-    #[x0 + s*scale for x in range()]
+    y = np.linspace(x0, xlast, num=int(len(x)*scale))
     return y
 
 def interp_tensor(X, scale, fill=True):
@@ -50,7 +48,7 @@ def interp_da(da, scale):
     latnew = interp_dim(da[da.dims[1]].values, scale)
     lonnew = interp_dim(da[da.dims[2]].values, scale)
     if latnew.shape[0] != scaled_tensor.shape[1]:
-        raise ValueError("New shape is shitty")
+        raise ValueError("New shape of scaled tensor does not match dimension shape")
     # intialize a new dataarray
     return xr.DataArray(scaled_tensor, coords=[da[da.dims[0]].values, latnew, lonnew],
                  dims=da.dims)
