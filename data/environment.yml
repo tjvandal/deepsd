@@ -8,6 +8,9 @@ channels:
 dependencies:
   - _libgcc_mutex=0.1=main
   - asn1crypto=1.2.0=py27_0
+  - backports=1.0=py_2
+  - backports.functools_lru_cache=1.5=py_2
+  - backports_abc=0.5=py27_0
   - blas=1.0=mkl
   - bleach=1.5.0=py27_0
   - bzip2=1.0.8=h7b6447c_0
@@ -20,17 +23,22 @@ dependencies:
   - conda-package-handling=1.6.0=py27h7b6447c_0
   - cryptography=2.8=py27h1ba5d50_0
   - curl=7.65.3=hbc83047_0
+  - cycler=0.10.0=py27_0
+  - dbus=1.13.12=h746ee38_0
   - enum34=1.1.6=py27_1
   - expat=2.2.6=he6710b0_0
   - fontconfig=2.13.0=h9420a91_0
   - freetype=2.9.1=h8a8886c_1
   - freexl=1.0.5=h14c3975_0
   - funcsigs=1.0.2=py27_0
+  - functools32=3.2.3.2=py27_1
   - futures=3.3.0=py27_0
   - gdal=2.3.3=py27hbb2a789_0
   - geos=3.7.1=he6710b0_0
   - giflib=5.1.4=h14c3975_1
   - glib=2.63.1=h5a9c865_0
+  - gst-plugins-base=1.14.0=hbbd80ab_1
+  - gstreamer=1.14.0=hb453b48_1
   - hdf4=4.2.13=h3ca952b_2
   - hdf5=1.10.4=hb1b8bf9_0
   - html5lib=0.9999999=py27_0
@@ -41,6 +49,7 @@ dependencies:
   - jpeg=9b=h024ee3a_2
   - json-c=0.13.1=h1bed415_0
   - kealib=1.4.7=hd0c454d_6
+  - kiwisolver=1.1.0=py27he6710b0_0
   - krb5=1.16.1=h173b8e3_7
   - libboost=1.67.0=h46d08c1_4
   - libcurl=7.65.3=h20c2e04_0
@@ -63,6 +72,7 @@ dependencies:
   - libxcb=1.13=h1bed415_1
   - libxml2=2.9.9=hea5a465_1
   - markdown=3.1.1=py27_0
+  - matplotlib=2.2.3=py27hb69df0a_0
   - mkl=2019.4=243
   - mkl-service=2.3.0=py27he904b0f_0
   - mkl_fft=1.0.15=py27ha843d7b_0
@@ -87,21 +97,29 @@ dependencies:
   - pycosat=0.6.3=py27h14c3975_0
   - pycparser=2.19=py27_0
   - pyopenssl=19.0.0=py27_0
+  - pyparsing=2.4.2=py_0
+  - pyqt=5.9.2=py27h05f1152_2
   - pysocks=1.7.1=py27_0
   - python=2.7.17=h9bab390_0
   - python-dateutil=2.8.1=py_0
   - pytz=2019.3=py_0
+  - qt=5.9.7=h5867ecd_1
   - readline=7.0=h7b6447c_5
   - requests=2.22.0=py27_0
   - ruamel_yaml=0.15.46=py27h14c3975_0
+  - scikit-learn=0.20.3=py27hd81dba3_0
   - scipy=1.2.1=py27h7c811a0_0
   - setuptools=41.6.0=py27_0
+  - singledispatch=3.4.0.3=py27_0
+  - sip=4.19.8=py27hf484d3e_0
   - six=1.12.0=py27_0
   - sqlite=3.30.1=h7b6447c_0
+  - subprocess32=3.5.4=py27h7b6447c_0
   - tensorflow=1.4.1=0
   - tensorflow-base=1.4.1=py27hd00c003_2
   - tensorflow-tensorboard=1.5.1=py27hf484d3e_1
   - tk=8.6.8=hbc83047_0
+  - tornado=5.1.1=py27h7b6447c_0
   - tqdm=4.36.1=py_0
   - urllib3=1.24.2=py27_0
   - webencodings=0.5.1=py27_1
